@@ -13,4 +13,9 @@ class State extends Model
         'gst_state_code',
         'is_union_territory',
     ];
+
+    public function organizations()
+    {
+        return $this->hasMany(Organization::class);
+    }
 }
