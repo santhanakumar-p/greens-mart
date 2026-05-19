@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreOrganizationRequest;
+use App\Http\Requests\UpdateOrganizationRequest;
+use App\Http\Resources\OrganizationResource;
 use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,39 +17,38 @@ class OrganizationController extends Controller
      */
     public function index()
     {
-        $organizations = Organization::with(['state:id,state_name,state_code,gst_state_code'])
-            ->select('id', 'name', 'country_code', 'state_id', 'currency_code', 'gstin', 'phone_number', 'email', 'financial_year_start_month', 'is_active')
+        $organizations = Organization::with(['state:id,state_name'])
+            ->select([
+                'id',
+                'name',
+                'country_code',
+                'state_id',
+                'currency_code',
+                'gstin',
+                'phone_number',
+                'email',
+                'financial_year_start_month',
+                'is_active'
+            ])
             ->paginate(10);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Organizations fetched successfully',
-            'data' => $organizations
+        return OrganizationResource::collection($organizations)->additional([
+            'message' => 'Organizations fetched successfully.'
         ]);
     }
+
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'country_code' => 'required|string|max:5',
-            'currency_code' => 'required|string|max:5',
-            'state_id' => 'nullable|exists:states,id',
-            'gstin' => 'nullable|string|max:20|unique:organizations,gstin',
-            'phone_number' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string',
-            'financial_year_start_month' => 'required|integer|between:1,12',
-            'is_active' => 'nullable|boolean',
-        ]);
 
-        $organization = Organization::create($validated);
+    public function store(StoreOrganizationRequest $request)
+    {
+        $organization = Organization::create(
+            $request->validated()
+        );
 
         return response()->json([
-            'status' => true,
-            'message' => 'Organization created successfully',
+            'message' => 'Organization created successfully.',
             'data' => $organization->load('state')
         ]);
     }
@@ -56,71 +58,53 @@ class OrganizationController extends Controller
      */
     public function show(int $id)
     {
-        $organization = Organization::with(['state:id,state_name,state_code,gst_state_code'])
-            ->select('id', 'name', 'country_code', 'state_id', 'currency_code', 'gstin', 'phone_number', 'email', 'financial_year_start_month', 'is_active')
+        $organization = Organization::with(['state:id,state_name'])
+            ->select([
+                'id',
+                'name',
+                'country_code',
+                'state_id',
+                'currency_code',
+                'gstin',
+                'phone_number',
+                'email',
+                'financial_year_start_month',
+                'is_active'
+            ])
             ->findOrFail($id);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Organization fetched successfully',
-            'data' => $organization
+        return (new OrganizationResource($organization))->additional([
+            'message' => 'Organization show successfully.'
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, int $id)
-    {
-        $organization = Organization::find($id);
+public function update(UpdateOrganizationRequest $request, int $id)
+{
+    $organizationData = Organization::findOrFail($id);
 
-        if (!$organization) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Organization not found'
-            ]);
-        }
+    $organizationData->update(
+        $request->validated()
+    );
 
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'country_code' => 'sometimes|required|string|max:5',
-            'currency_code' => 'sometimes|required|string|max:5',
-            'state_id' => 'nullable|exists:states,id',
-            'gstin' => ['nullable','string','max:20',Rule::unique('organizations', 'gstin')->ignore($organization->id)],
-            'phone_number' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string',
-            'financial_year_start_month' => 'sometimes|required|integer|between:1,12',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        $organization->update($validated);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Organization updated successfully',
-            'data' => $organization->load('state')
-        ]);
-    }
+    return response()->json([
+        'message' => 'Organization updated successfully',
+        'data' => $organizationData->load('state')
+    ]);
+}
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(int $id)
     {
-        $organization = Organization::find($id);
-
-        if (!$organization) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Organization not found'
-            ]);
-        }
+        $organization = Organization::findOrFail($id);
 
         $organization->delete();
 
         return response()->json([
-            'status' => true,
             'message' => 'Organization deleted successfully'
         ]);
     }
