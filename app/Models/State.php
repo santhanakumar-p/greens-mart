@@ -14,7 +14,7 @@ class State extends Model
         'is_union_territory',
     ];
 
-    public function organizations()
+    public function organization()
     {
         return $this->hasMany(Organization::class);
     }
